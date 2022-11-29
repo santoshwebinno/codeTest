@@ -1,0 +1,387 @@
+{{ 'cookies.css' | asset_url | stylesheet_tag }}
+<div class="container" id="app">
+  <div class="main-card second-step" v-if="stepone">
+    <div class="event-setup card-content">
+      <h1 class="heading">CHOOSE COOKIES</h1>
+      <div class="border-section">
+        <div class="cookiesbx" v-for="(product, index) in products" :key="index">
+          <div class="ProductItem ">
+            <div class="ProductItem__Wrapper  bold_option_value">
+              <button class="ProductItem__ImageWrapper">
+                <div class="editbox-img">
+                  <img class="ProductItem__Image Image--lazyLoad Image--fadeIn" v-bind:src="product.image">
+                  <span class="Image__Loader"></span>
+                </div>
+              </button>
+              <div class="ProductItem__Info">
+                <h2 class="ProductItem__Title Heading">
+                  <a :href="`/products/${product.handle}`" target="_blank">${product.name}</a>
+                </h2>
+              </div> 
+            </div>
+            <button v-if="product.selected== false" v-bind:disabled="addcookie== selectRang ? true : false" class="ProductItem__ViewButton Button Button--secondary" @click="addCookies(product,index)">Add</button>
+            <div v-else>
+              <div class="ProductForm__QuantitySelector">
+                <div class="QuantitySelector QuantitySelector--large">
+                  <span class="QuantitySelector__Button Link Link--secondary" data-action="decrease-quantity" @click="decreement(product, index)">
+                    <svg class="Icon Icon--minus" role="presentation" viewBox="0 0 16 2"><path d="M1,1 L15,1" stroke="currentColor" fill="none" fill-rule="evenodd" stroke-linecap="square"></path></svg>
+                  </span>
+                  <span class="quantityshow">${ product.quantity } Added</span>
+                  <span class="QuantitySelector__Button Link Link--secondary" :disabled="addcookie == selectRang ? true: false"  data-action="increase-quantity" @click="increement(product, index)">
+                    <svg class="Icon Icon--plus" role="presentation" viewBox="0 0 16 16"><g stroke="currentColor" fill="none" fill-rule="evenodd" stroke-linecap="square"><path d="M8,1 L8,15"></path><path d="M1,8 L15,8"></path></g></svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+            </div>
+        </div>
+        <div class="show-product">
+          <div class="showdetail">
+            <h2> {{ product.title }}</h2>
+            <p class="price">{{ product.price | money}}</p>
+          </div>
+          <div class="selectedprdt" v-for="(selctProd, index) in stepArray" :key="index">
+              <img class="" height="40" width="40" v-bind:src="selctProd.image">
+              <p class="select-name">${selctProd.name}</p>
+              <p class="remove" @click="removeCookies(selctProd)">X</p>
+          </div>
+          <div>
+            <button class="nextStep" :disabled="addcookie == selectRang ? false: true" @click="nextStepNotes()"> Next Step </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="main-card third-step" v-if="steptwo">
+    <div class="event-setup card-content">
+      <h1 class="heading">CHOOSE NOTES</h1>
+      <div class="border-section notes">
+        <table>
+          <tbody>
+            <tr>
+              <td> <input type="radio" name="selectnote" value="pre" class="selectnote" @change="onChange($event)"></td>
+              <td> 
+                <label class="note-labl">Pre-made Notes</label>
+                <select class="note-box" :disabled="selectName == 'pre' ? false: true" @change="onChangeSelectPre($event)">
+                  <option value =""  :selected="selectpreradio == 0? true: false" >Select Note</option>
+                  <option value="note 1">Note 1</option>
+                  <option value="note 2">Note 2 </option>
+                  <option value="note 3">Note 3</option>
+                </select>
+              </td>
+              <td>
+                <div v-for="(areaspre, index) in textareaPreNotes" :key="index">
+                      <textarea rows="8" cols="30" :id="areaspre.id"  v-if="selectpreradio > index" @change="textareaInputPreChange($event, index)">${areaspre.value }</textarea>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td> <input type="radio" value="custom" name="selectnote" class="selectnote" @change="onChange($event)"></td>
+              <td> 
+                <label class="note-labl">Pre-made Notes</label>
+                <select class="note-box" :disabled="selectName == 'custom' ? false: true" @change="onChangeSelect($event)">
+                  <option value="" :selected="selectradio == 0? true: false" >Select Note</option>
+                  <option value="note 1">Note 1</option>
+                  <option value="note 2">Note 2</option>
+                  <option value="note 3">Note 3</option>
+                </select>
+              </td>
+              <td>
+                <div v-for="(areas, index) in textareaNotes" :key="index">
+                  <textarea rows="8" cols="30" v-if="selectradio > index" :id="areas.id" @change="textareaInputChange($event, index)">${areas.value}</textarea>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td></td>
+              <td>
+                <button class="addtocart" @click="addcart()">Add To Cart</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script>
+  var product = {{ product | json }};
+  var products = [];
+  var productname = {{ product.title | json }};
+  var size = 0;
+  var price = {{ product.variants[0].price }};
+  price = price/100;
+  var variant ={{product.variants[0].id}};
+  var hidden_product = [];
+  var selectRang = {{section.settings.select_product}};
+  console.log(selectRang);
+  {% if section.settings.a_c != blank %}
+    var handle = '{{section.settings.a_c}}';
+    getCollection(handle)
+  {% endif %}
+  async function getCollection(handle){
+    var collectionContents = await fetch('/collections/'+handle+'/products.json?limit=250')
+    .then(response => response.json())
+    .then(data => { return data });
+    console.log(collectionContents);
+    collectionContents.products.forEach(function(product, ind){
+      console.log(product);
+      var value2 ={
+        'id': product.id,
+        'name':product.title,
+        'handle': product.handle,
+        'image': product.images[0].src,
+        'price': product.variants[0].price/100,
+        'variant_id': product.variants[0].id,
+        'variant_title': product.variants[0].title,
+        'selected': false,
+        'quantity': 0,
+      }
+      products.push(value2);
+    });
+    console.log(products);
+  }
+  var app =new Vue({
+    delimiters: ['${', '}'],
+    el: '#app',
+    data: {
+      variant_id: variant,
+      stepone: true,
+      steptwo: false,
+      stepthree: false,
+      box: 0,
+      stepArray: [],
+      products: products,
+      addcookie: 0,
+      quantity: 0,
+      selectRang: selectRang,
+      selectradio: 0,
+      selectpreradio: 0,
+      selectName: '',
+      textareaNotes: [{
+        'id': 'notes1',
+        'value': ''
+      },
+      {
+        'id': 'notes2',
+        'value': ''
+      },
+      {
+        'id': 'notes3',
+        'value': ''
+      }],
+      textareaPreNotes: [{
+        'id': 'prenotes1',
+        'value': '{{section.settings.note1}}'
+      },
+      {
+        'id': 'prenotes2',
+        'value': '{{section.settings.note2}}'
+      },
+      {
+        'id': 'prenotes3',
+        'value': '{{section.settings.note3}}'
+      }]
+    },
+    methods: {
+      addBox: async function(val) {
+        this.box = val;
+        this.steptwo=true;
+        this.stepone = false;
+      },
+      addCookies: async function(val, ind){
+        if(this.addcookie < this.selectRang){
+          var check = this.stepArray.find(x => x.id == val.id);
+          if(check == undefined){
+            this.stepArray.push(val);
+          }
+          
+          this.addcookie += 1;
+          this.products[ind].selected = true;
+          var quantity = this.products[ind].quantity;
+          this.products[ind].quantity =quantity+1;
+        }
+      },
+      decreement: function(val, ind){
+          this.addcookie -= 1;
+          var quantity = this.products[ind].quantity;
+          this.products[ind].quantity = quantity-1;
+          if(this.products[ind].quantity == 0){
+            this.products[ind].selected = false;
+           this.stepArray =  this.stepArray.filter(x => x.id != val.id)
+          }
+      },
+      increement: function(val, ind){
+        if(this.addcookie < this.selectRang){
+          this.addcookie += 1;
+          var quantity = this.products[ind].quantity;
+          console.log(quantity);
+          this.products[ind].quantity = quantity+1;
+        }
+      },
+      removeCookies: function(val){
+        var ind = products.findIndex(x => x.id == val.id);
+        this.products[ind].selected = false;
+        var addqt = this.products[ind].quantity;
+        this.addcookie = this.addcookie-addqt;
+        this.products[ind].quantity = 0;
+        this.stepArray =  this.stepArray.filter(x => x.id != val.id)
+      },
+      nextStepNotes: function(){
+        console.log("eee");
+        this.steptwo = true;
+        this.stepone = false;
+      },
+      onChange: function(event){
+        this.selectName= event.target.value;
+        this.selectradio =0;
+        this.selectpreradio = 0;
+        this.textareaNotes[0].value = '';
+        this.textareaNotes[1].value = '';
+        this.textareaNotes[2].value = '';
+        this.textareaPreNotes[0].value = '{{section.settings.note1}}';
+        this.textareaPreNotes[1].value = '{{section.settings.note2}}';
+        this.textareaPreNotes[2].value = '{{section.settings.note3}}';
+      },
+      onChangeSelect: function(event){
+        console.log(event.target.value)
+        if(event.target.value == 'note 1'){
+          this.selectradio =1;
+        }else if(event.target.value == 'note 2'){
+          this.selectradio =2;
+        }else if(event.target.value == 'note 3'){
+          this.selectradio =3;
+        }else{
+          this.selectradio =0;
+          this.textareaNotes[0].value = '';
+          this.textareaNotes[1].value = '';
+          this.textareaNotes[2].value = '';
+        }
+      },
+      onChangeSelectPre: function(event){
+        if(event.target.value == 'note 1'){
+          this.selectpreradio =1;
+          this.textareaPreNotes[1].value = '{{section.settings.note1}}';
+          this.textareaPreNotes[2].value = '{{section.settings.note2}}';
+        }else if(event.target.value == 'note 2'){
+          this.selectpreradio =2;
+          this.textareaPreNotes[2].value = '{{section.settings.note3}}';
+        }else if(event.target.value == 'note 3'){
+          this.selectpreradio =3;
+        }else{
+          this.selectpreradio =0;
+          this.textareaPreNotes[0].value = '{{section.settings.note1}}';
+          this.textareaPreNotes[1].value = '{{section.settings.note2}}';
+          this.textareaPreNotes[2].value = '{{section.settings.note3}}';
+        } 
+      },
+      textareaInputChange: function(event, ind){
+        console.log(event.target.value);
+        this.textareaNotes[ind].value = event.target.value;
+        console.log(this.textareaNotes);
+      },
+      textareaInputPreChange: function(event, ind){
+        this.textareaPreNotes[ind].value = event.target.value;
+      },
+      addcart: async function(){
+        console.log(this.variant_id);
+        console.log(this.stepArray);
+        console.log(this.selectName);
+        console.log(this.textareaNotes);
+        console.log(this.selectradio);
+        console.log(this.textareaPreNotes);
+        console.log(this.selectpreradio);
+        document.dispatchEvent(new CustomEvent("theme:loading:start"));
+        var allitmes = [];
+        var proprty = {};
+        for(var i=0; i < this.stepArray.length; i++){
+          var key='Item '+(i+1);
+          proprty[key]=this.stepArray[i].quantity+' x '+this.stepArray[i].name ;
+        }
+        if(this.selectName == 'custom' && this.selectradio > 0){
+          for(var i=0; i < this.textareaNotes.length; i++){
+            if(this.textareaNotes[i].value != ''){
+              var key='Note '+(i+1);
+              proprty[key]=this.textareaNotes[i].value;
+            } 
+          }
+        }else{
+          if(this.selectpreradio > 0){
+              for(var i=0; i < this.textareaPreNotes.length; i++){
+                if(this.textareaPreNotes[i].value != ''){
+                  var key='Note '+(i+1);
+                  proprty[key]=this.textareaPreNotes[i].value;
+                } 
+              }
+          }
+        }
+        console.log(proprty);
+        allitmes[0] = {
+          quantity: 1,
+          id: this.variant_id,
+          properties: proprty
+        };
+        var that = this;
+        let response = await fetch('/cart/add.js', 
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json;charset=utf-8'
+                },
+                body: JSON.stringify({items: allitmes})     
+              });
+        let result = await response.json();
+        console.log(result);
+        if(result.items != undefined){
+          window.location.href="/cart";
+        }
+      }
+    }
+  })
+</script>
+{% schema %}
+  {
+    "name": "Cookies Box",
+    "class": "cookies-box-main-section",
+    "settings": [
+		{
+			"type":"header",
+			"content":"Step II"
+		},
+      {
+			"type":"collection",
+			"id":"a_c",
+			"label":"Cookies Collection"
+		},
+        {
+			"type":"range",
+			"id":"select_product",
+			"label":"Select No. of Product",
+			"min":1,
+			"max":10,
+			"default":6
+		},
+        {
+			"type":"textarea",
+			"id":"note1",
+			"label":"Custom Note I",
+			"default":"Customer can type a custom note of 120 character or less here"
+		},
+        {
+			"type":"textarea",
+			"id":"note2",
+			"label":"Custom Note II",
+			"default":"Customer can type a custom note of 120 character or less here"
+		},
+        {
+			"type":"textarea",
+			"id":"note3",
+			"label":"Custom Note III",
+			"default":"Customer can type a custom note of 120 character or less here"
+		}
+    ]
+}
+{% endschema %}
+    
