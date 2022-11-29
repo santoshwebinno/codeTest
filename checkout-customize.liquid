@@ -1,0 +1,356 @@
+<script>
+  
+  
+  
+
+  (function($) {
+      console.log("ff");
+    $(document).ready(function() {
+/***/
+      
+var lookup = {
+            "street_number": document.getElementById('checkout_shipping_address_address1'),
+            "route": document.getElementById('checkout_shipping_address_address1'),
+            "fullAddress": document.getElementById('checkout_shipping_address_address1'),
+            //"locality": document.getElementById('checkout_shipping_address_address2'),
+            "neighborhood": document.getElementById('checkout_shipping_address_city'),
+            "postal_code": document.getElementById('checkout_shipping_address_zip'),
+            "administrative_area_level_1": document.getElementById('checkout_shipping_address_province'),
+            "administrative_area_level_3": document.getElementById('checkout_shipping_address_city')
+          };
+let address1Field;
+var placeSearch;
+      var autocomplete;
+      var componentForm = {
+        street_number: 'short_name',
+        route: 'long_name',
+        //locality: 'long_name',
+        neighborhood: 'long_name',
+        postal_code: 'short_name',
+        administrative_area_level_1: 'short_name',
+        administrative_area_level_3: 'short_name'
+      };
+function initAutocomplete() {
+  address1Field = document.getElementById('checkout_shipping_address_address1');;
+  
+
+  // Create the autocomplete object, restricting the search predictions to
+  // addresses in the US and Canada.
+  autocomplete = new google.maps.places.Autocomplete(address1Field, {
+    componentRestrictions: { country: [ "chl"] },
+    fields: ["address_components", "geometry", "icon", "name"],
+    types: ["address"]});
+  // , '(cities)', '(regions)'
+  address1Field.focus();
+
+  // When the user selects an address from the drop-down, populate the
+  // address fields in the form.
+  autocomplete.addListener("place_changed", fillInAddress);
+}     
+      
+ function fillInAddress() {
+   $('#checkout_shipping_address_province option:selected').prop('selected', false);
+   $('#checkout_shipping_address_city option:selected').prop('selected', false);
+   $('#checkout_shipping_address_province option').filter(':selected').val('Región')
+   var city ='';
+  // Get the place details from the autocomplete object.
+  const place = autocomplete.getPlace();
+  var fullAddress = '';
+   for (var component in componentForm) {
+     lookup[component].value = '';
+   }
+ console.log(componentForm)
+  // Get each component of the address from the place details,
+  // and then fill-in the corresponding field on the form.
+  // place.address_components are google.maps.GeocoderAddressComponent objects
+  // which are documented at http://goo.gle/3l5i5Mr
+  console.log(place.address_components);
+  for (var i = 0; i < place.address_components.length; i++) {
+    // @ts-ignore remove once typings fixed
+   // console.log(place.address_components[i]);
+    var addressType = place.address_components[i].types[0];
+    
+    var val = place.address_components[i][componentForm[addressType]];
+  // console.log(`addressType  ${addressType}`)
+   // console.log('cmp '+ componentForm[addressType])
+   // console.log('val '+val);
+//if (componentForm[addressType]) {
+    
+   // console.log(city);
+    switch (addressType) {
+      case "street_number": 
+        fullAddress = val + fullAddress;
+        break;
+
+      case "route": 
+        fullAddress = val + ' ' + fullAddress;
+        break;
+
+      case "postal_code": 
+        lookup.postal_code.value = val;
+        break;
+        
+      //case "locality":
+        //lookup.locality.value = val;
+        //break;
+      case "administrative_area_level_3":
+        city = val;
+        break;
+      
+      case "administrative_area_level_1":{
+        // console.log(val);
+        $('#checkout_shipping_address_province option').each(function(){
+          var attrbt = $(this).attr('data-alternate-values');
+          if(attrbt != undefined){
+          
+         // console.log(attrbt);
+         // console.log(attrbt.includes(val));
+         // JSON.parse(attrbt);
+         // console.log($(this).attr('data-alternate-values'));
+         // console.log('val '+val);
+         // var myval = $(this).text().replace("’", "'");
+          if(attrbt.includes(val)){
+            console.log("In");
+            $(this).prop('selected', true);
+            updateComunas();
+            setTimeout(function(){
+                updateCity(city);
+            },200) 
+          }
+          }
+        })
+       // console.log('mt '+ val);
+       // lookup.administrative_area_level_2.value = val;
+        break;
+      }
+    }
+  // }
+  }
+    //console.log(fullAddress);
+  if (fullAddress === ";"){
+    lookup.fullAddress.value = lookup.locality.value;
+  }
+   else {
+     lookup.fullAddress.value = fullAddress;
+   }
+
+  // After filling the form with address components from the Autocomplete
+  // prediction, set cursor focus on the second address line to encourage
+  // entry of subpremise information such as apartment, unit, or floor number.
+
+}
+      initAutocomplete();
+/***/
+      $('#checkout_shipping_address_zip').parent().parent().hide();
+      function updateCity(city){
+        // console.log('city '+city);
+        $('#checkout_shipping_address_city option').each(function(){
+            if($(this).text() == city){
+            $(this).prop('selected', true);
+          }
+        })
+      }   
+      
+//         function initialize() {
+//           var input = document.getElementById('checkout_shipping_address_address1');
+//           new google.maps.places.Autocomplete(input);
+//         }
+      
+// initialize();
+//         google.maps.event.addDomListener(window, 'load', initialize);
+      console.log("ff");
+        
+        if (Shopify.Checkout.step == "contact_information") {
+          console.log("Its Work");
+          setTimeout(function(){
+             console.log($('#checkout_email_or_phone').val());
+            $.ajax({
+              url: 'https://apis.dipy.cl/dipysa/public/api/savecustomer',
+              type: 'POST',
+              dataType: "json",
+              contentType: "application/json",
+              data: JSON.stringify({ "usuario": $('#checkout_email_or_phone').val(), "id": __st.cid}),
+              success: function(response){
+                 console.log(response);
+              }
+          })
+          },3000)
+          
+        if ($('body').find('.field__message--error').length > 0) {
+          $('#guest_button').click();
+        }
+
+        var checkedCP = true;
+          
+            $('div[data-address-field="country"]').hide();
+            $('div[data-address-field="province"]').addClass('field--half');
+            handleComunaField();
+          $('#checkout_shipping_address_id').change(function(){
+            setTimeout(function(){
+                $('div[data-address-field="country"]').hide();
+                $('div[data-address-field="province"]').addClass('field--half');
+                $('input[id="checkout_shipping_address_city"]').parent().parent().remove()
+                handleComunaField();
+            },100);
+                
+          })
+          $('#checkout_shipping_address_province').on('change', function() {
+            updateComunas();
+          }) 
+        }
+      })
+    setTimeout(async function(){
+      $('.product__description__property.order-summary__small-text').css('display', 'none');
+    console.log(Shopify.Checkout.step);
+      if(Shopify.Checkout.step == "shipping_method"){
+         $('head').append('<style>body {    background: #eee;}.step__sections .section.vendor-section { border: none !important;    padding: 0 !important;}.step__sections .section.vendor-section table {  border: 1px solid rgb(204, 204, 204);   padding: 10px !important;   display: inline-block;  border-radius: 4px; background: #ffffff;}.step__sections .section.vendor-section {  border: none !important;    padding: 0 !important;  margin-top: 20px !important;}.section.section--shipping-method {    padding-top: 20px;}.section.vendor-section h2 {text-transform: capitalize;}</style>');
+         //  console.log("error");
+         //  var cartContents = await fetch('/cart.js')
+          // .then(response => response.json())
+          // .then(data => { return data });
+          // console.log(cartContents.items);
+        var vendorArray = [];
+        $('fieldset.content-box .content-box__row').each(async function(){
+            var contentFun = $(this).find('.radio-wrapper');
+            var methodText = $(contentFun).find('.radio__label').find('.radio__label__primary').attr('data-shipping-method-label-title');
+            if(methodText.includes('dimerc')){
+                //
+            }else{
+                var deliveryArray = methodText.split(" ");
+                 for(let delivery of deliveryArray){
+                     if(delivery == 'Delivery' || delivery == '+'){}else{
+                        vendorArray.push(delivery) 
+                     }
+                 }
+            }
+        })
+        var html = '';
+        var VendorChArr = [];
+        for(let vendor of vendorArray){
+          var checkArray = vendor.split("(");
+          var tax = checkArray[1].replace(")", "");
+          VendorChArr.push({"id" : checkArray[0], "tax": tax});
+          html += `<h2>${checkArray[0]}</h2>
+          <table>
+          <thead >
+            <tr>
+              <th scope="col"><span class="visually-hidden">Imagen del producto</span></th>
+              <th scope="col"><span class="visually-hidden">Descripción</span></th>
+              <th scope="col"><span class="visually-hidden">Cantidad</span></th>
+              <th scope="col"><span class="visually-hidden">Precio</span></th>
+            </tr>
+          </thead>
+          <tbody id="${checkArray[0]}"></tbody>
+          </table>`;
+        }
+       
+        /**/
+        $(`<div class="section vendor-section">${html}</div>`).insertBefore('.section.section--shipping-method');
+        $('.vendor-section').css({"border": "1px solid #ccc", "padding": "10px", "margin-top": "3em", "border-radius": "4px"});
+        $('.vendor-section h2').css({"margin": "17px auto"});
+        /**/
+        $('tr.product').each(function(){
+              var productTr = $(this);
+              var productVemdor = $(this).find('.product__description__property.order-summary__small-text').text().trim();
+              var ProVendAray = productVemdor.split(" ");
+              var checkVendor = VendorChArr.find(x=> x.id == ProVendAray[1]);
+              if(checkVendor != undefined){
+                var quantity = $(this).find('.product__image').find('.product-thumbnail__quantity').text();
+                var price = $(this).find('.product__price').find('.order-summary__emphasis.skeleton-while-loading').text();
+                var title = $(this).find('.product__description').find('.product__description__name').text();
+                var imageSrc = $(this).find('.product__image').find('.product-thumbnail__image').attr('src');
+                var tax = checkVendor.tax;
+                tax = numberWithCommas(tax);
+                tax = tax.replace(',', '.');
+                $('#'+checkVendor.id).append(`<tr>
+          <td class="vendor-image product__image">
+            <div class="product-thumbnail">
+              <div class="product-thumbnail__wrapper">
+                <img alt="${title}" class="" src="${imageSrc}">
+              </div>
+            </div>
+          </td>
+          <th class="product__description" scope="row">
+            <span class="product__description__name order-summary__emphasis">${title}</span>
+            <span class="" aria-hidden="true">${quantity}</span><br>
+            <span class="order-summary__emphasis skeleton-while-loading">${price}</span>
+          </th>
+          <td class="product__quantity"><span class="visually-hidden">${quantity}</span></td>
+          <td class="product__price">
+            ${tax} $
+          </td>
+        </tr>`);
+              }
+          });
+        function numberWithCommas(x) {
+            return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+       }
+      },3000);
+      function handleComunaField() {
+         
+        var comunas = '<option name="default" selected disabled value="">Introduce la zona</option>';
+        var region_code = $('div[data-address-field="province"] option').filter(':selected').val();
+        var error = "";
+        var storedCom = "";
+        
+        if ($('div[data-address-field="city"] p#error-for-city').length > 0) {
+          error = $('div[data-address-field="city"] p#error-for-city');
+        }
+        
+        $('div[data-address-field="city"]').remove();
+        
+        $.getJSON('//cdn.shopify.com/s/files/1/0587/9811/2941/files/comunas.json?v=8229080605383240216', function(data) {
+          $.each(data, function(key, value) {
+            if (data[key].code == region_code) {
+              $.each(data[key].comunas, function(key2, value) {
+                comunas = comunas + '<option value="' + data[key].comunas[key2] + '">' + data[key].comunas[key2] + '</option>';
+                
+              });
+            }
+          });
+          $('div[data-address-field="address2"]').addClass('field--half');
+          $('div[data-address-field="province"]').after('' +
+            '<div class="field field--required field--show-floating-label field--half" data-address-field="city" data-autocomplete-field-container="true">' +
+              '<div class="field__input-wrapper field__input-wrapper--select">' + 
+                '<label class="field__label field__label--visible" for="checkout_shipping_address_city">Comuna</label>' +
+                '<select size="1" autocomplete="shipping country" data-trekkie-id="shipping_city_field" data-backup="city" class="field__input field__input--select" aria-required="true" name="checkout[shipping_address][city]" id="checkout_shipping_address_city">' +
+                  comunas +
+                '</select>' +
+                '<div class="field__caret">' +
+                  '<svg class="icon-svg icon-svg--color-adaptive-lighter icon-svg--size-10 field__caret-svg" role="presentation" aria-hidden="true" focusable="false"> <use xlink:href="#caret-down"></use> </svg>' +
+                '</div>' + 
+              '</div>' +
+            '</div>');
+          if (error.length > 0) {
+            $('div[data-address-field="city"]').addClass('field--error')
+            $('div[data-address-field="city"]').append(error);
+          }
+          if (storedCom.length > 0) {
+            $('div[data-address-field="city"] select').val(storedCom);
+          }
+        });
+      }
+      
+      function updateComunas() {
+       var comunas = '<option name="default" selected disabled value="">Introduce la zona</option>';
+        var region_code = $('div[data-address-field="province"] option').filter(':selected').val()
+        
+        $.getJSON('//cdn.shopify.com/s/files/1/0575/2805/8064/files/comunas.json?v=1652838954', function(data) {
+          $.each(data, function(key, value) {
+            if (data[key].code == region_code) {
+              $.each(data[key].comunas, function(key2, value) {
+                comunas = comunas + '<option value="' + data[key].comunas[key2] + '">' + data[key].comunas[key2] + '</option>';
+              });
+            }
+          });
+          $('div[data-address-field="city"] select').html(comunas);
+        });
+      }
+  })(Checkout.$);
+      
+  
+
+
+</script>
+
