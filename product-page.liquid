@@ -1,0 +1,72 @@
+{{ 'cookies.css' | asset_url | stylesheet_tag }}
+<div class="main-card first-step">
+    <div class="event-setup card-content">
+      <h1 class="heading">CHOOSE BOX</h1>
+      <div class="border-section">
+        {% for product in collections[section.settings.collection].products limit:limit %}
+          <div class="ProductItem {% if use_horizontal %}ProductItem--horizontal{% endif %}">
+            <div class="ProductItem__Wrapper">
+              {%- comment -%}
+              We are using LazySizes to efficiently choose the most appropriate image in the set. However, because internally LazySizes uses srcset, we need to make
+              sure that the image sizes we offer is not larger than the max size uploaded by the merchants.
+              {%- endcomment -%}
+          
+              {%- if settings.product_image_size == 'natural' or use_horizontal -%}
+                {%- assign use_natural_size = true -%}
+              {%- else -%}
+                {%- assign use_natural_size = false -%}
+              {%- endif -%}
+          
+              {%- if settings.product_show_secondary_image and product.images[1] != blank and use_horizontal != true -%}
+                {%- assign has_alternate_image = true -%}
+              {%- else -%}
+                {%- assign has_alternate_image = false -%}
+              {%- endif -%}
+              <a href="{{ product.url | within: collection }}" class="ProductItem__ImageWrapper {% if has_alternate_image %}ProductItem__ImageWrapper--withAlternateImage{% endif %}">
+                <img class="ProductItem__Image ProductItem__Image--alternate Image--lazyLoad Image--fadeIn" src="{{ product.featured_image | img_url: '600x' }}" data-widths="[{{ supported_sizes }}]" data-sizes="auto" alt="{{ product.images[1].alt | escape }}" data-image-id="{{ product.images[1].id }}">
+              </a>
+              <div class="ProductItem__PriceList  Heading">
+                <span class="ProductItem__Price Price Text--subdued" data-money-convertible="">
+                <span class="money" data-currency-aed="Dhs. 149">{{ product.price | money_without_trailing_zeros }}</span>
+                </span>
+              </div>
+              <h2 class="ProductItem__Title Heading">
+                <a href="{{ product.url | within: collection }}">{{ product.title }}</a>
+              </h2>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% schema %}
+  {
+    "name": "Cookies Box",
+     "class": "cookies-box-Products",
+    "settings": [
+      {
+			"type":"header",
+			"content":"Products"
+		},
+		{
+			"type":"collection",
+			"id":"collection",
+			"label":"Collection"
+		},
+		{
+			"type":"range",
+			"id":"show_product",
+			"label":"Show No. of Product",
+			"min":2,
+			"max":2,
+			"default":2
+		}
+    ]
+  }
+{% endschema %}
+
+{% stylesheet %}
+{% endstylesheet %}
+
+{% javascript %}
+{% endjavascript %}
